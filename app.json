@@ -1,29 +1,43 @@
 {
   "expo": {
-    "name": "lockedIn2",
-    "slug": "lockedIn2",
+    "name": "lockedIn: AI Day Scheduler",
+    "slug": "lockedin-scheduler",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#090909"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.lockedinapp.scheduler",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true
+      "package": "com.lockedinapp.scheduler",
+      "permissions": [
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "plugins": [
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "lockedIn needs calendar access to add your schedule."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2f546c26-145c-4689-99f5-35ba5f84eeab"
+      }
     }
   }
 }
