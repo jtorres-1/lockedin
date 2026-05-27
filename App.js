@@ -51,7 +51,6 @@ function getTodayKey() {
 }
 
 function getUsageCount() {
-  // In production use AsyncStorage — for now use a module-level counter
   return globalThis._lockedInUsage || 0;
 }
 
@@ -94,6 +93,43 @@ function EventCard({ item, index }) {
 }
 
 function PaywallModal({ visible, onClose, onPurchase, packages, purchasing }) {
+  const fallback = [
+    { label: 'Pro Monthly', desc: 'Billed monthly', price: '$9.99/mo', highlight: true },
+    { label: 'Pro Yearly', desc: 'Save 33% vs monthly', price: '$79.99/yr', highlight: false },
+    { label: 'Business', desc: 'Teams & power users', price: '$49.99/mo', highlight: false },
+  ];
+
+  const plans = packages.length > 0 ? packages.map((pkg, i) => {
+    const isYearly = pkg.identifier.includes('yearly') || pkg.identifier.includes('annual');
+    const isMonthly = pkg.identifier.includes('monthly') && !pkg.identifier.includes('business');
+    const isBusiness = pkg.identifier.includes('business');
+    return (
+      <TouchableOpacity key={i} style={[pw.planBtn, isMonthly && pw.planBtnHighlight]}
+        onPress={() => onPurchase(pkg)} disabled={purchasing}>
+        {isMonthly && <View style={pw.popularBadge}><Text style={pw.popularText}>MOST POPULAR</Text></View>}
+        <View style={pw.planLeft}>
+          <Text style={[pw.planName, isMonthly && pw.planNameHighlight]}>
+            {isBusiness ? 'Business' : isYearly ? 'Pro Yearly' : 'Pro Monthly'}
+          </Text>
+          <Text style={pw.planDesc}>
+            {isBusiness ? 'Teams & power users' : isYearly ? 'Save 33% vs monthly' : 'Billed monthly'}
+          </Text>
+        </View>
+        <Text style={[pw.planPrice, isMonthly && pw.planPriceHighlight]}>{pkg.product.priceString}</Text>
+      </TouchableOpacity>
+    );
+  }) : fallback.map((plan, i) => (
+    <TouchableOpacity key={i} style={[pw.planBtn, plan.highlight && pw.planBtnHighlight]}
+      onPress={() => onPurchase(null)} disabled={purchasing}>
+      {plan.highlight && <View style={pw.popularBadge}><Text style={pw.popularText}>MOST POPULAR</Text></View>}
+      <View style={pw.planLeft}>
+        <Text style={[pw.planName, plan.highlight && pw.planNameHighlight]}>{plan.label}</Text>
+        <Text style={pw.planDesc}>{plan.desc}</Text>
+      </View>
+      <Text style={[pw.planPrice, plan.highlight && pw.planPriceHighlight]}>{plan.price}</Text>
+    </TouchableOpacity>
+  ));
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <SafeAreaView style={pw.safe} edges={['top','bottom']}>
@@ -101,56 +137,22 @@ function PaywallModal({ visible, onClose, onPurchase, packages, purchasing }) {
           <TouchableOpacity onPress={onClose} style={pw.closeBtn}>
             <Text style={pw.closeText}>✕</Text>
           </TouchableOpacity>
-
-          <View style={pw.lockIcon}>
-            <Text style={pw.lockEmoji}>🔒</Text>
-          </View>
-
+          <View style={pw.lockIcon}><Text style={pw.lockEmoji}>🔒</Text></View>
           <Text style={pw.title}>Unlock lockedIn Pro</Text>
           <Text style={pw.sub}>You've used your 3 free schedules today. Upgrade for unlimited access.</Text>
-
           <View style={pw.features}>
-            {['Unlimited daily schedules', 'Direct iPhone Calendar sync', 'Smart break scheduling', 'Date planning for any day', 'Priority AI scheduling'].map((f, i) => (
+            {['Unlimited daily schedules','Direct iPhone Calendar sync','Smart break scheduling','Date planning for any day','Priority AI scheduling'].map((f,i) => (
               <View key={i} style={pw.featureRow}>
                 <Text style={pw.featureCheck}>✓</Text>
                 <Text style={pw.featureText}>{f}</Text>
               </View>
             ))}
           </View>
-
-          {packages.map((pkg, i) => {
-            const isYearly = pkg.identifier.includes('yearly') || pkg.identifier.includes('annual');
-            const isMonthly = pkg.identifier.includes('monthly') && !pkg.identifier.includes('business');
-            const isBusiness = pkg.identifier.includes('business');
-            return (
-              <TouchableOpacity
-                key={i}
-                style={[pw.planBtn, isMonthly && pw.planBtnHighlight]}
-                onPress={() => onPurchase(pkg)}
-                disabled={purchasing}
-              >
-                {isMonthly && <View style={pw.popularBadge}><Text style={pw.popularText}>MOST POPULAR</Text></View>}
-                <View style={pw.planLeft}>
-                  <Text style={[pw.planName, isMonthly && pw.planNameHighlight]}>
-                    {isBusiness ? 'Business' : isYearly ? 'Pro Yearly' : 'Pro Monthly'}
-                  </Text>
-                  <Text style={pw.planDesc}>
-                    {isBusiness ? 'Teams & power users' : isYearly ? 'Save 33% vs monthly' : 'Billed monthly'}
-                  </Text>
-                </View>
-                <Text style={[pw.planPrice, isMonthly && pw.planPriceHighlight]}>
-                  {pkg.product.priceString}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-
+          {plans}
           {purchasing && <ActivityIndicator color={C.accent} style={{ marginTop: 16 }} />}
-
           <TouchableOpacity style={pw.restoreBtn} onPress={onClose}>
             <Text style={pw.restoreText}>Restore Purchases</Text>
           </TouchableOpacity>
-
           <Text style={pw.legal}>Cancel anytime. Subscriptions auto-renew unless cancelled 24 hours before renewal.</Text>
         </ScrollView>
       </SafeAreaView>
@@ -198,6 +200,10 @@ export default function App() {
   };
 
   const handlePurchase = async (pkg) => {
+    if (!pkg) {
+      Alert.alert('Store Unavailable', 'Please check your connection and try again.');
+      return;
+    }
     setPurchasing(true);
     try {
       const { customerInfo } = await Purchases.purchasePackage(pkg);
@@ -241,7 +247,7 @@ export default function App() {
           'anthropic-version': '2023-06-01',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
+          model: 'claude-sonnet-4-6',
           max_tokens: 1200,
           system: `You are a productivity scheduling assistant. Given tasks and preferences, produce a realistic time-blocked daily schedule.
 Return ONLY a JSON array, no markdown, no preamble. Each item:
