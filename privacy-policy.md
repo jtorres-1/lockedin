@@ -12,3 +12,6 @@ We do not store or transmit calendar data.
 
 ## Contact
 jessetorres386@icloud.com
+
+## Terms of Use
+This app uses Apple's standard EULA: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
