@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert, Animated,
-  KeyboardAvoidingView, Platform, Modal
+  KeyboardAvoidingView, Platform, Modal, Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Calendar from 'expo-calendar';
@@ -92,7 +92,7 @@ function EventCard({ item, index }) {
   );
 }
 
-function PaywallModal({ visible, onClose, onPurchase, packages, purchasing }) {
+function PaywallModal({ visible, onClose, onPurchase, onRestore, packages, purchasing }) {
   const fallback = [
     { label: 'Pro Monthly', desc: 'Billed monthly', price: '$9.99/mo', highlight: true },
     { label: 'Pro Yearly', desc: 'Save 33% vs monthly', price: '$79.99/yr', highlight: false },
@@ -150,10 +150,19 @@ function PaywallModal({ visible, onClose, onPurchase, packages, purchasing }) {
           </View>
           {plans}
           {purchasing && <ActivityIndicator color={C.accent} style={{ marginTop: 16 }} />}
-          <TouchableOpacity style={pw.restoreBtn} onPress={onClose}>
+          <TouchableOpacity style={pw.restoreBtn} onPress={onRestore}>
             <Text style={pw.restoreText}>Restore Purchases</Text>
           </TouchableOpacity>
           <Text style={pw.legal}>Cancel anytime. Subscriptions auto-renew unless cancelled 24 hours before renewal.</Text>
+          <View style={pw.legalLinks}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://github.com/jtorres-1/lockedin/blob/main/privacy-policy.md')}>
+              <Text style={pw.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={pw.legalSep}> · </Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+              <Text style={pw.legalLink}>Terms of Use</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -187,7 +196,7 @@ export default function App() {
   const setupRevenueCat = async () => {
     try {
       Purchases.setLogLevel(LOG_LEVEL.DEBUG);
-      Purchases.configure({ apiKey: RC_API_KEY });
+      Purchases.configure({ apiKey: RC_API_KEY, appUserID: null });
       const customerInfo = await Purchases.getCustomerInfo();
       setIsPro(customerInfo.entitlements.active['lockedin Pro'] !== undefined);
       const offerings = await Purchases.getOfferings();
@@ -216,6 +225,21 @@ export default function App() {
       if (!e.userCancelled) Alert.alert('Purchase failed', e.message);
     } finally {
       setPurchasing(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      const { customerInfo } = await Purchases.restorePurchases();
+      if (customerInfo.entitlements.active['lockedin Pro']) {
+        setIsPro(true);
+        setShowPaywall(false);
+        Alert.alert('Restored!', 'Your Pro access has been restored.');
+      } else {
+        Alert.alert('No purchases found', 'No active subscription found for this account.');
+      }
+    } catch (e) {
+      Alert.alert('Restore failed', e.message);
     }
   };
 
@@ -476,6 +500,7 @@ Rules: respect fixed times, schedule focus work early, add short breaks between 
         visible={showPaywall}
         onClose={() => setShowPaywall(false)}
         onPurchase={handlePurchase}
+        onRestore={handleRestore}
         packages={packages}
         purchasing={purchasing}
       />
@@ -584,4 +609,7 @@ const pw = StyleSheet.create({
   restoreBtn: { alignItems: 'center', marginTop: 16, marginBottom: 12 },
   restoreText: { fontSize: 13, color: '#555' },
   legal: { fontSize: 11, color: '#444', textAlign: 'center', lineHeight: 16 },
+  legalLinks: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  legalLink: { fontSize: 11, color: '#666', textDecorationLine: 'underline' },
+  legalSep: { fontSize: 11, color: '#444' },
 });
