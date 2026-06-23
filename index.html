@@ -1,1 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>lockedIn — AI Day Scheduler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#090909;
+  --surface:#111111;
+  --surface2:#1a1a1a;
+  --border:#222222;
+  --accent:#c8f060;
+  --accent-dim:rgba(200,240,96,0.12);
+  --accent-border:rgba(200,240,96,0.25);
+  --text:#f5f2ed;
+  --sub:#999999;
+  --muted:#444444;
+  --focus-bg:rgba(74,90,255,0.15);
+  --work:#1e2340;
+  --work-text:#7a8fff;
+  --break-bg:#0f2a1a;
+  --break-text:#4dbd7a;
+  --admin:#2a1e0a;
+  --admin-text:#d4943a;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;}
 
+/* LAYOUT */
+.app{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 16px 60px;}
+
+/* HEADER */
+.header{width:100%;max-width:560px;display:flex;justify-content:space-between;align-items:center;padding:28px 0 20px;}
+.logo{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--text);letter-spacing:-0.5px;}
+.logo span{color:var(--accent);}
+.pill{background:var(--accent-dim);border:1px solid var(--accent-border);border-radius:99px;padding:3px 8px;font-size:9px;font-weight:700;color:var(--accent);letter-spacing:1.4px;}
+.pill.pro{background:rgba(200,240,96,0.2);border-color:var(--accent);}
+.header-right{display:flex;gap:8px;align-items:center;}
+.upgrade-btn{background:var(--accent);border:none;border-radius:99px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--bg);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.upgrade-btn:hover{background:#b8e050;}
+.new-btn{background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:500;color:var(--sub);cursor:pointer;font-family:'DM Sans',sans-serif;display:none;}
+.new-btn:hover{color:var(--text);}
+
+/* USAGE BAR */
+.usage-bar{width:100%;max-width:560px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.usage-text{font-size:12px;color:var(--sub);}
+.usage-dots{display:flex;gap:5px;}
+.dot{width:8px;height:8px;border-radius:4px;background:var(--border);}
+.dot.used{background:var(--accent);}
+
+/* CARD */
+.card{width:100%;max-width:560px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:10px;}
+.field-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.6px;margin-bottom:8px;font-family:'DM Mono',monospace;}
+.optional{font-weight:400;letter-spacing:0;color:var(--muted);}
+
+/* DATE CHIPS */
+.date-scroll{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none;}
+.date-scroll::-webkit-scrollbar{display:none;}
+.date-chip{flex-shrink:0;display:flex;flex-direction:column;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:8px 12px;cursor:pointer;min-width:52px;transition:all 0.15s;}
+.date-chip:hover{border-color:var(--accent-border);}
+.date-chip.selected{background:var(--accent);border-color:var(--accent);}
+.chip-day{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:0.5px;}
+.chip-num{font-size:20px;font-weight:700;color:var(--text);margin:1px 0;}
+.chip-month{font-size:10px;font-weight:500;color:var(--muted);}
+.date-chip.selected .chip-day,
+.date-chip.selected .chip-num,
+.date-chip.selected .chip-month{color:var(--bg);}
+
+/* TIME ROW */
+.time-row{display:flex;gap:0;}
+.time-col{flex:1;padding:12px;}
+.time-col:first-child{border-right:1px solid var(--border);}
+.time-input{background:transparent;border:none;outline:none;font-size:18px;font-weight:600;color:var(--text);font-family:'DM Sans',sans-serif;width:100%;margin-top:3px;}
+
+/* TEXTAREA / INPUT */
+textarea,input.text-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5;outline:none;resize:none;transition:border 0.15s;}
+textarea:focus,input.text-input:focus{border-color:var(--accent);}
+textarea::placeholder,input.text-input::placeholder{color:var(--muted);}
+textarea{height:110px;}
+
+/* GEN BUTTON */
+.gen-btn{width:100%;max-width:560px;background:var(--accent);border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;color:var(--bg);cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:0.3px;transition:all 0.15s;box-shadow:0 4px 20px rgba(200,240,96,0.2);margin-bottom:10px;}
+.gen-btn:hover{background:#b8e050;transform:translateY(-1px);}
+.gen-btn:active{transform:translateY(0);}
+.gen-btn:disabled{background:rgba(200,240,96,0.5);cursor:not-allowed;transform:none;}
+
+/* RESULT */
+.summary-bar{width:100%;max-width:560px;display:flex;gap:8px;align-items:center;margin-bottom:16px;padding:0 2px;}
+.summary-text{font-size:13px;color:var(--sub);font-weight:500;}
+.summary-dot{font-size:13px;color:var(--muted);}
+
+.timeline{width:100%;max-width:560px;margin-bottom:16px;}
+.event-card{display:flex;margin-bottom:2px;}
+.event-left{width:18px;display:flex;flex-direction:column;align-items:center;padding-top:3px;}
+.event-dot{width:7px;height:7px;border-radius:4px;margin-bottom:4px;flex-shrink:0;}
+.event-line{flex:1;width:1px;background:var(--border);margin-bottom:-2px;}
+.event-right{flex:1;padding-left:12px;padding-bottom:18px;}
+.event-time{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:0.5px;margin-bottom:2px;font-family:'DM Mono',monospace;}
+.event-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:3px;letter-spacing:-0.2px;}
+.event-note{font-size:12px;color:var(--sub);line-height:1.5;margin-bottom:6px;}
+.tag{display:inline-block;padding:3px 7px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:0.8px;}
+.tag-focus{background:var(--focus-bg);color:#7a8fff;}
+.tag-work{background:var(--work);color:var(--work-text);}
+.tag-break{background:var(--break-bg);color:var(--break-text);}
+.tag-admin{background:var(--admin);color:var(--admin-text);}
+
+/* CAL BUTTON */
+.cal-btn{width:100%;max-width:560px;background:var(--accent);border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;color:var(--bg);cursor:pointer;font-family:'DM Sans',sans-serif;letter-spacing:0.3px;box-shadow:0 4px 20px rgba(200,240,96,0.2);margin-bottom:10px;transition:all 0.15s;}
+.cal-btn:hover{background:#b8e050;}
+.cal-btn.done{background:var(--break-bg);border:1px solid var(--break-text);color:var(--break-text);box-shadow:none;cursor:default;}
+.new-day-link{font-size:13px;color:var(--muted);cursor:pointer;text-align:center;width:100%;max-width:560px;padding:8px;}
+.new-day-link:hover{color:var(--sub);}
+
+/* MODAL OVERLAY */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100;align-items:flex-end;justify-content:center;}
+.modal-overlay.active{display:flex;}
+.modal{background:#0a0a0a;border-radius:20px 20px 0 0;width:100%;max-width:560px;padding:24px;max-height:90vh;overflow-y:auto;}
+.modal-close{float:right;background:none;border:none;color:#666;font-size:20px;cursor:pointer;line-height:1;padding:4px;}
+.modal-lock{font-size:48px;text-align:center;display:block;margin:12px 0 16px;}
+.modal-title{font-size:24px;font-weight:800;color:var(--text);text-align:center;letter-spacing:-0.5px;margin-bottom:8px;}
+.modal-sub{font-size:14px;color:#888;text-align:center;line-height:1.5;margin-bottom:22px;}
+.features-box{background:#111;border:1px solid #222;border-radius:12px;padding:14px;margin-bottom:20px;}
+.feature-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.feature-row:last-child{margin-bottom:0;}
+.feature-check{color:var(--accent);font-weight:700;font-size:14px;}
+.feature-text{font-size:14px;color:#ccc;}
+.plan-btn{width:100%;background:#161616;border:1px solid #2a2a2a;border-radius:12px;padding:16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:border 0.15s;position:relative;font-family:'DM Sans',sans-serif;}
+.plan-btn:hover{border-color:#555;}
+.plan-btn.highlight{background:#1a1f0a;border:1.5px solid var(--accent);}
+.popular-badge{position:absolute;top:-10px;left:14px;background:var(--accent);border-radius:99px;padding:2px 8px;font-size:9px;font-weight:800;color:#0a0a0a;letter-spacing:1px;}
+.plan-name{font-size:16px;font-weight:700;color:var(--text);margin-bottom:2px;text-align:left;}
+.plan-btn.highlight .plan-name{color:var(--accent);}
+.plan-desc{font-size:12px;color:#666;text-align:left;}
+.plan-price{font-size:18px;font-weight:700;color:var(--text);}
+.plan-btn.highlight .plan-price{color:var(--accent);}
+.restore-btn{width:100%;background:none;border:none;color:#555;font-size:13px;cursor:pointer;padding:12px;font-family:'DM Sans',sans-serif;}
+.restore-btn:hover{color:#888;}
+.legal-text{font-size:11px;color:#444;text-align:center;line-height:1.5;margin-top:8px;}
+.legal-links{display:flex;justify-content:center;gap:4px;margin-top:8px;}
+.legal-link{font-size:11px;color:#555;text-decoration:underline;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;}
+
+/* LOADING SPINNER */
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(9,9,9,0.3);border-top-color:#090909;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;z-index:200;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;}
+.toast.show{opacity:1;}
+
+/* LANDING */
+.landing{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;background:radial-gradient(ellipse at 50% 0%,rgba(200,240,96,0.08) 0%,var(--bg) 60%);}
+.landing-logo{font-family:'DM Mono',monospace;font-size:52px;font-weight:500;color:var(--text);letter-spacing:-2px;margin-bottom:16px;}
+.landing-logo span{color:var(--accent);}
+.landing-sub{font-size:18px;color:var(--sub);max-width:420px;margin-bottom:40px;line-height:1.6;}
+.landing-btns{display:flex;gap:12px;margin-bottom:16px;}
+.landing-price{font-size:13px;color:var(--muted);}
+.landing-price span{color:var(--accent);font-weight:600;}
+.btn-primary{background:var(--accent);border:none;border-radius:10px;padding:13px 28px;font-size:15px;font-weight:700;color:var(--bg);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-primary:hover{background:#b8e050;}
+.btn-secondary{background:transparent;border:1px solid var(--border);border-radius:10px;padding:13px 28px;font-size:15px;font-weight:500;color:var(--sub);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.btn-secondary:hover{border-color:#555;color:var(--text);}
+
+/* AUTH */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px;width:100%;max-width:380px;}
+.auth-title{font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.auth-sub{font-size:14px;color:var(--sub);margin-bottom:24px;}
+.auth-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;margin-bottom:10px;transition:border 0.15s;}
+.auth-input:focus{border-color:var(--accent);}
+.auth-btn{width:100%;background:var(--accent);border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;color:var(--bg);cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px;}
+.auth-btn:hover{background:#b8e050;}
+.auth-switch{text-align:center;margin-top:16px;font-size:13px;color:var(--sub);}
+.auth-switch span{color:var(--accent);cursor:pointer;}
+.auth-error{font-size:13px;color:#ff6b6b;margin-bottom:10px;}
+
+@media(max-width:480px){
+  .landing-logo{font-size:38px;}
+  .landing-sub{font-size:16px;}
+  .gen-btn,.cal-btn{font-size:14px;}
+}
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+<div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="paywall">
+  <div class="modal">
+    <button class="modal-close" onclick="closePaywall()">✕</button>
+    <span class="modal-lock">🔒</span>
+    <div class="modal-title">Unlock lockedIn Pro</div>
+    <div class="modal-sub">You've used your 3 free schedules today.<br>Upgrade for unlimited access.</div>
+    <div class="features-box">
+      <div class="feature-row"><span class="feature-check">✓</span><span class="feature-text">Unlimited daily schedules</span></div>
+      <div class="feature-row"><span class="feature-check">✓</span><span class="feature-text">Download to any calendar — iPhone, Google, Outlook</span></div>
+      <div class="feature-row"><span class="feature-check">✓</span><span class="feature-text">Smart break scheduling</span></div>
+      <div class="feature-row"><span class="feature-check">✓</span><span class="feature-text">Plan any day up to 7 days ahead</span></div>
+      <div class="feature-row"><span class="feature-check">✓</span><span class="feature-text">Priority AI scheduling</span></div>
+    </div>
+    <button class="plan-btn highlight" onclick="checkout()">
+      <div class="popular-badge">MOST POPULAR</div>
+      <div>
+        <div class="plan-name">Pro Monthly</div>
+        <div class="plan-desc">Billed monthly, cancel anytime</div>
+      </div>
+      <div class="plan-price">$9.99/mo</div>
+    </button>
+    <button class="restore-btn" onclick="showToast('No active subscription found.')">Restore Purchases</button>
+    <div class="legal-text">Subscriptions auto-renew unless cancelled 24 hours before renewal.</div>
+    <div class="legal-links">
+      <button class="legal-link" onclick="window.open('https://github.com/jtorres-1/lockedin/blob/main/privacy-policy.md')">Privacy Policy</button>
+      <span style="color:#444;font-size:11px"> · </span>
+      <button class="legal-link" onclick="window.open('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')">Terms of Use</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ANTHROPIC_KEY = 'ANTHROPIC_KEY_PLACEHOLDER';
+const STRIPE_PK = 'pk_live_51QtgrGDnBjPtcpirWsZM0XhWBqoO4Oao6Ks7Zx94NprRzX1x23cVOzF0miopaIJBEHmUMXGiOZZFHZpR0sSkjWvu00nMtVhMaE';
+const STRIPE_PRICE = 'price_1TIIMSDnBjPtcpirto5cGhQG';
+const CHECKOUT_URL = 'https://buy.stripe.com/14A4gzeXV9qIdYSh2e2Ry0k';
+const FREE_LIMIT = 3;
+
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+let state = {
+  view: 'landing', // landing | auth | app
+  authMode: 'login',
+  isPro: false,
+  usageCount: getUsage(),
+  schedule: [],
+  selectedDate: new Date(),
+  step: 'input', // input | result
+  tasks: '',
+  startTime: '9:00 AM',
+  endTime: '6:00 PM',
+  prefs: '',
+};
+
+// --- USAGE ---
+function getUsage() {
+  const today = fmtDate(new Date());
+  const saved = localStorage.getItem('li_usage');
+  if (!saved) return 0;
+  const parsed = JSON.parse(saved);
+  return parsed.date === today ? parsed.count : 0;
+}
+function incUsage() {
+  const today = fmtDate(new Date());
+  const count = getUsage() + 1;
+  localStorage.setItem('li_usage', JSON.stringify({date: today, count}));
+  state.usageCount = count;
+}
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getNext7Days() {
+  return Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()+i);return d;});
+}
+
+// --- TOAST ---
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+// --- PAYWALL ---
+function openPaywall() { document.getElementById('paywall').classList.add('active'); }
+function closePaywall() { document.getElementById('paywall').classList.remove('active'); }
+function checkout() {
+  window.open(CHECKOUT_URL, '_blank');
+  closePaywall();
+}
+
+// --- AUTH ---
+function isLoggedIn() { return !!localStorage.getItem('li_token'); }
+function logout() {
+  localStorage.removeItem('li_token');
+  localStorage.removeItem('li_email');
+  state.isPro = false;
+  state.view = 'landing';
+  render();
+}
+
+// --- GENERATE ---
+async function generate() {
+  if (!state.tasks.trim()) { showToast('Add some tasks first'); return; }
+
+  if (!state.isPro && state.usageCount >= FREE_LIMIT) {
+    openPaywall(); return;
+  }
+
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>Building your day...';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1200,
+        system: `You are a productivity scheduling assistant. Given tasks and preferences, produce a realistic time-blocked daily schedule.
+Return ONLY a JSON array, no markdown, no preamble. Each item:
+- "time": "9:00 AM - 10:00 AM"
+- "title": short task name
+- "note": one-sentence tip (can be empty string)
+- "category": one of "focus", "work", "break", "admin"
+- "start_24": start time in HHmm format e.g. "0900"
+- "end_24": end time in HHmm format e.g. "1000"
+Rules: respect fixed times, schedule focus work early, add short breaks between long blocks, no overlaps, stay within start/end times.`,
+        messages: [{
+          role: 'user',
+          content: `Day: ${state.startTime} to ${state.endTime}\nTasks:\n${state.tasks}${state.prefs ? '\nPreferences: '+state.prefs : ''}`
+        }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const raw = data.content.map(b=>b.text||'').join('');
+    const clean = raw.replace(/```json|```/g,'').trim();
+    state.schedule = JSON.parse(clean);
+    state.step = 'result';
+    incUsage();
+    render();
+    window.scrollTo({top:0,behavior:'smooth'});
+  } catch(e) {
+    showToast('Error: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = getGenBtnLabel(); }
+  }
+}
+
+function getGenBtnLabel() {
+  if (!state.isPro && state.usageCount >= FREE_LIMIT) return 'Upgrade to Generate →';
+  return 'Generate schedule →';
+}
+
+// --- ICS EXPORT ---
+function downloadICS() {
+  const ds = fmtDate(state.selectedDate);
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  let ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//lockedIn//AI Scheduler//EN\nCALSCALE:GREGORIAN\n`;
+  for (const item of state.schedule) {
+    const sv = (item.start_24||'0900').padStart(4,'0');
+    const ev = (item.end_24||'1000').padStart(4,'0');
+    const start = `${ds.replace(/-/g,'')}T${sv.slice(0,2)}${sv.slice(2,4)}00`;
+    const end = `${ds.replace(/-/g,'')}T${ev.slice(0,2)}${ev.slice(2,4)}00`;
+    ics += `BEGIN:VEVENT\nSUMMARY:${item.title}\nDTSTART;TZID=${tz}:${start}\nDTEND;TZID=${tz}:${end}\nDESCRIPTION:${item.note||''}\nEND:VEVENT\n`;
+  }
+  ics += 'END:VCALENDAR';
+  const blob = new Blob([ics], {type:'text/calendar'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `lockedin-${ds}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+  document.getElementById('cal-btn').innerHTML = '✓  Schedule downloaded — tap to add to Calendar';
+  document.getElementById('cal-btn').classList.add('done');
+  showToast('Open the .ics file to add to your calendar');
+}
+
+// --- RENDER ---
+function render() {
+  const root = document.getElementById('root');
+  if (state.view === 'landing') { root.innerHTML = renderLanding(); return; }
+  if (state.view === 'auth') { root.innerHTML = renderAuth(); bindAuth(); return; }
+  root.innerHTML = renderApp();
+  bindApp();
+}
+
+function renderLanding() {
+  return `
+  <div class="landing">
+    <div class="landing-logo">locked<span>In</span></div>
+    <div class="landing-sub">Dump your tasks. Get a time-blocked schedule. Add to your calendar in one tap.</div>
+    <div class="landing-btns">
+      <button class="btn-primary" onclick="state.view='auth';state.authMode='register';render()">Get Started</button>
+      <button class="btn-secondary" onclick="state.view='auth';state.authMode='login';render()">Log In</button>
+    </div>
+    <div class="landing-price">Free to try · <span>$9.99/mo</span> for unlimited</div>
+  </div>`;
+}
+
+function renderAuth() {
+  const isLogin = state.authMode === 'login';
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-title">${isLogin ? 'Welcome back' : 'Create account'}</div>
+      <div class="auth-sub">${isLogin ? 'Log in to your lockedIn account' : 'Start planning smarter today'}</div>
+      <div class="auth-error" id="auth-error" style="display:none"></div>
+      <input class="auth-input" id="auth-email" type="email" placeholder="Email" autocomplete="email"/>
+      <input class="auth-input" id="auth-pass" type="password" placeholder="Password" autocomplete="${isLogin?'current-password':'new-password'}"/>
+      <button class="auth-btn" id="auth-btn">${isLogin ? 'Log In' : 'Create Account'}</button>
+      <div class="auth-switch">${isLogin ? 'No account? <span onclick="state.authMode=\'register\';render()">Sign up</span>' : 'Have an account? <span onclick="state.authMode=\'login\';render()">Log in</span>'}</div>
+    </div>
+  </div>`;
+}
+
+function bindAuth() {
+  document.getElementById('auth-btn').onclick = doAuth;
+  document.getElementById('auth-pass').addEventListener('keydown', e => { if(e.key==='Enter') doAuth(); });
+}
+
+async function doAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-pass').value;
+  const errEl = document.getElementById('auth-error');
+  const btn = document.getElementById('auth-btn');
+  if (!email || !pass) { errEl.textContent='Fill in all fields';errEl.style.display='block';return; }
+  btn.textContent = '...';
+  btn.disabled = true;
+  try {
+    const endpoint = state.authMode === 'login' ? '/api/login' : '/api/register';
+    const res = await fetch(endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass})
+    });
+    const data = await res.json();
+    if (data.error) { errEl.textContent=data.error;errEl.style.display='block';btn.textContent=state.authMode==='login'?'Log In':'Create Account';btn.disabled=false;return; }
+    localStorage.setItem('li_token', data.token);
+    localStorage.setItem('li_email', email);
+    state.isPro = !!data.subscribed;
+    state.view = 'app';
+    render();
+  } catch(e) {
+    errEl.textContent='Connection error';errEl.style.display='block';
+    btn.textContent=state.authMode==='login'?'Log In':'Create Account';btn.disabled=false;
+  }
+}
+
+function renderApp() {
+  const days = getNext7Days();
+  const remaining = Math.max(0, FREE_LIMIT - state.usageCount);
+
+  return `
+  <div class="app">
+    <div class="header">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="logo">locked<span>In</span></div>
+        <div class="pill ${state.isPro?'pro':''}">${state.isPro?'PRO':'AI SCHEDULER'}</div>
+      </div>
+      <div class="header-right">
+        ${!state.isPro && state.step==='input' ? '<button class="upgrade-btn" onclick="openPaywall()">Upgrade</button>' : ''}
+        ${state.step==='result' ? '<button class="new-btn" id="new-btn" style="display:block" onclick="resetApp()">New day</button>' : ''}
+        <button class="upgrade-btn" style="background:transparent;border:1px solid var(--border);color:var(--sub);" onclick="logout()">Out</button>
+      </div>
+    </div>
+
+    ${!state.isPro && state.step==='input' ? `
+    <div class="usage-bar">
+      <span class="usage-text">${remaining > 0 ? `${remaining} free schedule${remaining!==1?'s':''} left today` : 'Daily limit reached — upgrade for unlimited'}</span>
+      <div class="usage-dots">
+        <div class="dot ${state.usageCount>0?'used':''}"></div>
+        <div class="dot ${state.usageCount>1?'used':''}"></div>
+        <div class="dot ${state.usageCount>2?'used':''}"></div>
+      </div>
+    </div>` : ''}
+
+    ${state.step === 'input' ? `
+    <div class="card">
+      <div class="field-label">DATE</div>
+      <div class="date-scroll" id="date-scroll">
+        ${days.map((d,i)=>{
+          const sel = fmtDate(d)===fmtDate(state.selectedDate);
+          const isToday = fmtDate(d)===fmtDate(new Date());
+          return `<div class="date-chip ${sel?'selected':''}" onclick="selectDate(${i})">
+            <span class="chip-day">${isToday?'Today':DAYS[d.getDay()]}</span>
+            <span class="chip-num">${d.getDate()}</span>
+            <span class="chip-month">${MONTHS[d.getMonth()]}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;">
+      <div class="time-row">
+        <div class="time-col">
+          <div class="field-label">START</div>
+          <input class="time-input" id="start-time" value="${state.startTime}"/>
+        </div>
+        <div class="time-col">
+          <div class="field-label">END</div>
+          <input class="time-input" id="end-time" value="${state.endTime}"/>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field-label">TASKS — dump it all</div>
+      <textarea id="tasks-input" placeholder="- Deep work (2 hrs)&#10;- Lunch&#10;- Client calls (1 hr)&#10;- Gym">${state.tasks}</textarea>
+    </div>
+
+    <div class="card">
+      <div class="field-label">PREFERENCES <span class="optional">optional</span></div>
+      <input class="text-input" id="prefs-input" value="${state.prefs}" placeholder="deep work in morning, breaks between blocks"/>
+    </div>
+
+    <button class="gen-btn" id="gen-btn" onclick="generate()">${getGenBtnLabel()}</button>
+    ` : ''}
+
+    ${state.step === 'result' && state.schedule.length > 0 ? `
+    <div class="summary-bar">
+      <span class="summary-text">${DAYS[state.selectedDate.getDay()]} ${MONTHS[state.selectedDate.getMonth()]} ${state.selectedDate.getDate()}</span>
+      <span class="summary-dot">·</span>
+      <span class="summary-text">${state.schedule.length} blocks</span>
+      <span class="summary-dot">·</span>
+      <span class="summary-text">${state.startTime} – ${state.endTime}</span>
+    </div>
+    <div class="timeline">
+      ${state.schedule.map(item=>{
+        const colors = {focus:'#7a8fff',work:'#7a8fff',break:'#4dbd7a',admin:'#d4943a'};
+        const dotColor = colors[item.category]||'#7a8fff';
+        return `<div class="event-card">
+          <div class="event-left">
+            <div class="event-dot" style="background:${dotColor}"></div>
+            <div class="event-line"></div>
+          </div>
+          <div class="event-right">
+            <div class="event-time">${item.time}</div>
+            <div class="event-title">${item.title}</div>
+            ${item.note?`<div class="event-note">${item.note}</div>`:''}
+            <span class="tag tag-${item.category}">${item.category}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="cal-btn" id="cal-btn" onclick="downloadICS()">+ Add to Calendar</button>
+    <div class="new-day-link" onclick="resetApp()">Plan a different day</div>
+    ` : ''}
+  </div>`;
+}
+
+function bindApp() {
+  const tasksEl = document.getElementById('tasks-input');
+  if (tasksEl) tasksEl.addEventListener('input', e => state.tasks = e.target.value);
+  const prefsEl = document.getElementById('prefs-input');
+  if (prefsEl) prefsEl.addEventListener('input', e => state.prefs = e.target.value);
+  const startEl = document.getElementById('start-time');
+  if (startEl) startEl.addEventListener('change', e => state.startTime = e.target.value);
+  const endEl = document.getElementById('end-time');
+  if (endEl) endEl.addEventListener('change', e => state.endTime = e.target.value);
+}
+
+function selectDate(i) {
+  const days = getNext7Days();
+  state.selectedDate = days[i];
+  render();
+}
+
+function resetApp() {
+  state.step = 'input';
+  state.schedule = [];
+  render();
+}
+
+// --- INIT ---
+if (isLoggedIn()) {
+  state.view = 'app';
+  // check subscription status
+  fetch('/api/me', {headers:{'Authorization':'Bearer '+localStorage.getItem('li_token')}})
+    .then(r=>r.json()).then(d=>{ if(d.subscribed) state.isPro=true; render(); }).catch(()=>render());
+} else {
+  render();
+}
+</script>
+
+</body>
+</html>
