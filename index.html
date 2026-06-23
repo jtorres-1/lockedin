@@ -21,8 +21,12 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
 .logo{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--text);letter-spacing:-0.5px;}
 .logo span{color:var(--accent);}
 .pill{background:var(--accent-dim);border:1px solid var(--accent-border);border-radius:99px;padding:3px 8px;font-size:9px;font-weight:700;color:var(--accent);letter-spacing:1.4px;}
+.pill.pro{background:rgba(200,240,96,0.25);border-color:var(--accent);}
+.header-right{display:flex;gap:8px;align-items:center;}
 .upgrade-btn{background:var(--accent);border:none;border-radius:99px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--bg);cursor:pointer;font-family:'DM Sans',sans-serif;}
 .upgrade-btn:hover{background:#b8e050;}
+.login-btn{background:transparent;border:1px solid var(--border);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:500;color:var(--sub);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.login-btn:hover{border-color:var(--accent);color:var(--accent);}
 .usage-bar{width:100%;max-width:560px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
 .usage-text{font-size:12px;color:var(--sub);}
 .usage-dots{display:flex;gap:5px;}
@@ -101,15 +105,20 @@ textarea{height:110px;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid var(--border);color:var(--text);padding:12px 20px;border-radius:10px;font-size:14px;z-index:200;opacity:0;transition:opacity 0.3s;pointer-events:none;white-space:nowrap;}
 .toast.show{opacity:1;}
-.landing{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 20px;background:radial-gradient(ellipse at 50% 0%,rgba(200,240,96,0.08) 0%,var(--bg) 60%);}
-.landing-logo{font-family:'DM Mono',monospace;font-size:52px;font-weight:500;color:var(--text);letter-spacing:-2px;margin-bottom:16px;}
-.landing-logo span{color:var(--accent);}
-.landing-sub{font-size:18px;color:var(--sub);max-width:420px;margin-bottom:40px;line-height:1.6;}
-.landing-btn{background:var(--accent);border:none;border-radius:10px;padding:14px 36px;font-size:16px;font-weight:700;color:var(--bg);cursor:pointer;font-family:'DM Sans',sans-serif;box-shadow:0 4px 24px rgba(200,240,96,0.25);}
-.landing-btn:hover{background:#b8e050;}
-.landing-price{font-size:13px;color:var(--muted);margin-top:14px;}
-.landing-price span{color:var(--accent);font-weight:600;}
-@media(max-width:480px){.landing-logo{font-size:38px;}.landing-sub{font-size:16px;}}
+.auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;display:flex;align-items:center;justify-content:center;}
+.auth-box{background:#111;border:1px solid #222;border-radius:16px;padding:32px;width:90%;max-width:380px;}
+.auth-box-title{font-size:20px;font-weight:700;color:var(--text);margin-bottom:4px;}
+.auth-box-sub{font-size:13px;color:var(--sub);margin-bottom:20px;}
+.auth-box-err{color:#ff6b6b;font-size:13px;margin-bottom:8px;display:none;}
+.auth-box input{width:100%;background:#0a0a0a;border:1px solid #333;border-radius:8px;padding:11px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;margin-bottom:10px;box-sizing:border-box;}
+.auth-box input:focus{border-color:var(--accent);}
+.auth-box-btn{width:100%;background:var(--accent);border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;color:var(--bg);cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:12px;}
+.auth-box-btn:hover{background:#b8e050;}
+.auth-box-switch{text-align:center;font-size:13px;color:var(--sub);}
+.auth-box-switch span{color:var(--accent);cursor:pointer;}
+.auth-box-skip{text-align:center;margin-top:10px;font-size:12px;color:var(--muted);cursor:pointer;}
+.auth-box-skip:hover{color:var(--sub);}
+@media(max-width:480px){.auth-box{padding:24px;}}
 </style>
 </head>
 <body>
@@ -120,7 +129,7 @@ textarea{height:110px;}
     <button class="modal-close" onclick="closePaywall()">x</button>
     <span class="modal-lock">&#128274;</span>
     <div class="modal-title">Unlock lockedIn Pro</div>
-    <div class="modal-sub">You've used your 3 free schedules today.<br>Upgrade for unlimited access.</div>
+    <div class="modal-sub">You've used your free schedule today.<br>Upgrade for unlimited access.</div>
     <div class="features-box">
       <div class="feature-row"><span class="feature-check">&#10003;</span><span class="feature-text">Unlimited daily schedules</span></div>
       <div class="feature-row"><span class="feature-check">&#10003;</span><span class="feature-text">Download to iPhone, Google, or Outlook Calendar</span></div>
@@ -147,11 +156,14 @@ textarea{height:110px;}
 <script>
 var ANTHROPIC_KEY='ANTHROPIC_KEY_PLACEHOLDER';
 var CHECKOUT_URL='https://buy.stripe.com/14A4gzeXV9qIdYSh2e2Ry0k';
-var FREE_LIMIT=3;
+var API='https://flowmate.live';
+var FREE_LIMIT=1;
 var DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-var state={view:'landing',usageCount:getUsage(),schedule:[],selectedDate:new Date(),step:'input',tasks:'',startTime:'9:00 AM',endTime:'6:00 PM',prefs:''};
+var state={view:'app',usageCount:getUsage(),schedule:[],selectedDate:new Date(),step:'input',tasks:'',startTime:'9:00 AM',endTime:'6:00 PM',prefs:''};
 
+function isPro(){return localStorage.getItem('li_pro')==='1';}
+function getToken(){return localStorage.getItem('li_token');}
 function fmtDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function getNext7Days(){var r=[];for(var i=0;i<7;i++){var d=new Date();d.setDate(d.getDate()+i);r.push(d);}return r;}
 function getUsage(){try{var s=localStorage.getItem('li_usage');if(!s)return 0;var p=JSON.parse(s);return p.date===fmtDate(new Date())?p.count:0;}catch(e){return 0;}}
@@ -159,10 +171,70 @@ function incUsage(){var c=getUsage()+1;localStorage.setItem('li_usage',JSON.stri
 function showToast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},3000);}
 function openPaywall(){document.getElementById('paywall').classList.add('active');}
 function closePaywall(){document.getElementById('paywall').classList.remove('active');}
-function checkout(){window.open(CHECKOUT_URL,'_blank');closePaywall();}
 function selectDate(i){state.selectedDate=getNext7Days()[i];render();}
 function resetApp(){state.step='input';state.schedule=[];render();}
-function getBtnLabel(){return state.usageCount>=FREE_LIMIT?'Upgrade to Generate ->':'Generate schedule ->';}
+
+function getBtnLabel(){
+  if(isPro())return 'Generate schedule ->';
+  return state.usageCount>=FREE_LIMIT?'Upgrade to Generate ->':'Generate schedule ->';
+}
+
+function checkout(){
+  window.open(CHECKOUT_URL,'_blank');
+  closePaywall();
+  setTimeout(function(){showAuthModal('register');},2500);
+}
+
+function showAuthModal(mode){
+  if(document.getElementById('auth-modal'))return;
+  var isReg=mode==='register';
+  var div=document.createElement('div');
+  div.className='auth-overlay';
+  div.id='auth-modal';
+  div.innerHTML='<div class="auth-box">'
+    +'<div class="auth-box-title">'+(isReg?'Save your access':'Welcome back')+'</div>'
+    +'<div class="auth-box-sub">'+(isReg?'Create an account to keep Pro access across devices and browser resets.':'Log in to restore your Pro access.')+'</div>'
+    +'<div class="auth-box-err" id="auth-err"></div>'
+    +'<input id="auth-email" type="email" placeholder="Email"/>'
+    +'<input id="auth-pass" type="password" placeholder="Password"/>'
+    +'<button class="auth-box-btn" id="auth-submit">'+(isReg?'Create Account':'Log In')+'</button>'
+    +'<div class="auth-box-switch">'+(isReg?'Already have an account? <span id="auth-sw">Log in</span>':'No account? <span id="auth-sw">Sign up</span>')+'</div>'
+    +'<div class="auth-box-skip" id="auth-skip">Skip for now</div>'
+    +'</div>';
+  document.body.appendChild(div);
+  document.getElementById('auth-submit').onclick=function(){doAuth(mode);};
+  document.getElementById('auth-skip').onclick=function(){document.getElementById('auth-modal').remove();};
+  document.getElementById('auth-sw').onclick=function(){
+    document.getElementById('auth-modal').remove();
+    showAuthModal(isReg?'login':'register');
+  };
+}
+
+async function doAuth(mode){
+  var email=document.getElementById('auth-email').value.trim();
+  var pass=document.getElementById('auth-pass').value;
+  var err=document.getElementById('auth-err');
+  var btn=document.getElementById('auth-submit');
+  if(!email||!pass){err.textContent='Fill in all fields';err.style.display='block';return;}
+  btn.textContent='...';btn.disabled=true;
+  try{
+    var r=await fetch(API+(mode==='register'?'/api/register':'/api/login'),{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:email,password:pass})
+    });
+    var d=await r.json();
+    if(d.error)throw new Error(d.error);
+    localStorage.setItem('li_token',d.token);
+    if(d.subscribed){localStorage.setItem('li_pro','1');}
+    document.getElementById('auth-modal').remove();
+    render();
+    showToast(isPro()?'Pro access saved':'Account created');
+  }catch(e){
+    err.textContent=e.message;err.style.display='block';
+    btn.textContent=mode==='register'?'Create Account':'Log In';btn.disabled=false;
+  }
+}
 
 function downloadICS(){
   var ds=fmtDate(state.selectedDate);
@@ -189,7 +261,7 @@ function downloadICS(){
 
 async function generate(){
   if(!state.tasks.trim()){showToast('Add some tasks first');return;}
-  if(state.usageCount>=FREE_LIMIT){openPaywall();return;}
+  if(!isPro()&&state.usageCount>=FREE_LIMIT){openPaywall();return;}
   var btn=document.getElementById('gen-btn');
   btn.disabled=true;
   btn.innerHTML='<span class="spinner"></span>Building your day...';
@@ -209,7 +281,7 @@ async function generate(){
     var clean=raw.replace(/```json|```/g,'').trim();
     state.schedule=JSON.parse(clean);
     state.step='result';
-    incUsage();
+    if(!isPro())incUsage();
     render();
     window.scrollTo({top:0,behavior:'smooth'});
   }catch(e){
@@ -221,32 +293,50 @@ async function generate(){
 
 function render(){
   var root=document.getElementById('root');
-  if(state.view==='landing'){root.innerHTML=renderLanding();return;}
   root.innerHTML=renderApp();
   bindApp();
-}
-
-function renderLanding(){
-  return '<div class="landing"><div class="landing-logo">locked<span>In</span></div><div class="landing-sub">Dump your tasks. Get a time-blocked schedule. Add to your calendar in seconds.</div><button class="landing-btn" onclick="state.view=\'app\';render()">Try it free</button><div class="landing-price">3 free schedules per day &middot; <span>$9.99/mo</span> for unlimited</div></div>';
 }
 
 function renderApp(){
   var days=getNext7Days();
   var remaining=Math.max(0,FREE_LIMIT-state.usageCount);
+  var pro=isPro();
+
   var chips=days.map(function(d,i){
     var sel=fmtDate(d)===fmtDate(state.selectedDate);
     var isToday=fmtDate(d)===fmtDate(new Date());
     return '<div class="date-chip '+(sel?'selected':'')+'" onclick="selectDate('+i+')"><span class="chip-day">'+(isToday?'Today':DAYS[d.getDay()])+'</span><span class="chip-num">'+d.getDate()+'</span><span class="chip-month">'+MONTHS[d.getMonth()]+'</span></div>';
   }).join('');
+
   var events=state.schedule.map(function(item){
     var colors={focus:'#7a8fff',work:'#7a8fff',break:'#4dbd7a',admin:'#d4943a'};
     var dc=colors[item.category]||'#7a8fff';
     return '<div class="event-card"><div class="event-left"><div class="event-dot" style="background:'+dc+'"></div><div class="event-line"></div></div><div class="event-right"><div class="event-time">'+item.time+'</div><div class="event-title">'+item.title+'</div>'+(item.note?'<div class="event-note">'+item.note+'</div>':'')+'<span class="tag tag-'+item.category+'">'+item.category+'</span></div></div>';
   }).join('');
-  return '<div class="app"><div class="header"><div style="display:flex;align-items:center;gap:8px;"><div class="logo">locked<span>In</span></div><div class="pill">AI SCHEDULER</div></div><button class="upgrade-btn" onclick="openPaywall()">Upgrade</button></div>'
-    +'<div class="usage-bar"><span class="usage-text">'+(remaining>0?remaining+' free schedule'+(remaining!==1?'s':'')+' left today':'Daily limit reached - upgrade for unlimited')+'</span><div class="usage-dots"><div class="dot '+(state.usageCount>0?'used':'')+'"></div><div class="dot '+(state.usageCount>1?'used':'')+'"></div><div class="dot '+(state.usageCount>2?'used':'')+'"></div></div></div>'
-    +(state.step==='input'?'<div class="card"><div class="field-label">DATE</div><div class="date-scroll">'+chips+'</div></div><div class="card" style="padding:0;"><div class="time-row"><div class="time-col"><div class="field-label">START</div><input class="time-input" id="start-time" value="'+state.startTime+'"/></div><div class="time-col"><div class="field-label">END</div><input class="time-input" id="end-time" value="'+state.endTime+'"/></div></div></div><div class="card"><div class="field-label">TASKS - dump it all</div><textarea id="tasks-input" placeholder="- Deep work (2 hrs)&#10;- Lunch&#10;- Client calls (1 hr)&#10;- Gym">'+state.tasks+'</textarea></div><div class="card"><div class="field-label">PREFERENCES <span class="optional">optional</span></div><input class="text-input" id="prefs-input" value="'+state.prefs+'" placeholder="deep work in morning, breaks between blocks"/></div><button class="gen-btn" id="gen-btn" onclick="generate()">'+getBtnLabel()+'</button>':'')
-    +(state.step==='result'&&state.schedule.length>0?'<div class="summary-bar"><span class="summary-text">'+DAYS[state.selectedDate.getDay()]+' '+MONTHS[state.selectedDate.getMonth()]+' '+state.selectedDate.getDate()+'</span><span class="summary-dot">&middot;</span><span class="summary-text">'+state.schedule.length+' blocks</span><span class="summary-dot">&middot;</span><span class="summary-text">'+state.startTime+' - '+state.endTime+'</span></div><div class="timeline">'+events+'</div><button class="cal-btn" id="cal-btn" onclick="downloadICS()">+ Add to Calendar</button><div class="new-day-link" onclick="resetApp()">Plan a different day</div>':'')
+
+  var header='<div class="header"><div style="display:flex;align-items:center;gap:8px;"><div class="logo">locked<span>In</span></div>'
+    +(pro?'<div class="pill pro">PRO</div>':'<div class="pill">AI SCHEDULER</div>')
+    +'</div><div class="header-right">'
+    +(pro?'':'<button class="upgrade-btn" onclick="openPaywall()">Upgrade</button>')
+    +'<button class="login-btn" onclick="showAuthModal(\''+(getToken()?'login':'login')+'\')">'+( getToken()?'Account':'Log in')+'</button>'
+    +'</div></div>';
+
+  var usageBar=pro?'':'<div class="usage-bar"><span class="usage-text">'+(remaining>0?'1 free schedule to try':'Daily limit reached - upgrade for unlimited')+'</span><div class="usage-dots"><div class="dot '+(state.usageCount>0?'used':'')+'"></div></div></div>';
+
+  var inputSection='<div class="card"><div class="field-label">DATE</div><div class="date-scroll">'+chips+'</div></div>'
+    +'<div class="card" style="padding:0;"><div class="time-row"><div class="time-col"><div class="field-label">START</div><input class="time-input" id="start-time" value="'+state.startTime+'"/></div><div class="time-col"><div class="field-label">END</div><input class="time-input" id="end-time" value="'+state.endTime+'"/></div></div></div>'
+    +'<div class="card"><div class="field-label">TASKS - dump it all</div><textarea id="tasks-input" placeholder="- Deep work (2 hrs)&#10;- Lunch&#10;- Client calls (1 hr)&#10;- Gym">'+state.tasks+'</textarea></div>'
+    +'<div class="card"><div class="field-label">PREFERENCES <span class="optional">optional</span></div><input class="text-input" id="prefs-input" value="'+state.prefs+'" placeholder="deep work in morning, breaks between blocks"/></div>'
+    +'<button class="gen-btn" id="gen-btn" onclick="generate()">'+getBtnLabel()+'</button>';
+
+  var resultSection='<div class="summary-bar"><span class="summary-text">'+DAYS[state.selectedDate.getDay()]+' '+MONTHS[state.selectedDate.getMonth()]+' '+state.selectedDate.getDate()+'</span><span class="summary-dot">&middot;</span><span class="summary-text">'+state.schedule.length+' blocks</span><span class="summary-dot">&middot;</span><span class="summary-text">'+state.startTime+' - '+state.endTime+'</span></div>'
+    +'<div class="timeline">'+events+'</div>'
+    +'<button class="cal-btn" id="cal-btn" onclick="downloadICS()">+ Add to Calendar</button>'
+    +'<div class="new-day-link" onclick="resetApp()">Plan a different day</div>';
+
+  return '<div class="app">'+header+usageBar
+    +(state.step==='input'?inputSection:'')
+    +(state.step==='result'&&state.schedule.length>0?resultSection:'')
     +'</div>';
 }
 
@@ -257,7 +347,27 @@ function bindApp(){
   var en=document.getElementById('end-time');if(en)en.addEventListener('change',function(e){state.endTime=e.target.value;});
 }
 
-render();
+async function init(){
+  if(window.location.search.includes('success=true')){
+    localStorage.setItem('li_pro','1');
+    window.history.replaceState({},'','/');
+    state.usageCount=getUsage();
+  }
+  var token=getToken();
+  if(token){
+    try{
+      var r=await fetch(API+'/api/me',{headers:{'Authorization':'Bearer '+token}});
+      var d=await r.json();
+      if(d.subscribed){localStorage.setItem('li_pro','1');}
+    }catch(e){}
+  }
+  render();
+  if(window.location.search.includes('success=true')){
+    setTimeout(function(){showAuthModal('register');},500);
+  }
+}
+
+init();
 </script>
 </body>
 </html>
