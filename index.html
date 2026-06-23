@@ -281,7 +281,7 @@ async function generate(){
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':ANTHROPIC_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-6',max_tokens:1200,
+        model:'claude-sonnet-4-6',max_tokens:2000,
         system:'You are a productivity scheduling assistant. Given tasks and preferences, produce a realistic time-blocked daily schedule.\nReturn ONLY a JSON array, no markdown, no preamble. Each item:\n- "time": "9:00 AM - 10:00 AM"\n- "title": short task name\n- "note": one-sentence tip (can be empty string)\n- "category": one of "focus", "work", "break", "admin"\n- "start_24": start time in HHmm format e.g. "0900"\n- "end_24": end time in HHmm format e.g. "1000"\nRules: respect fixed times, schedule focus work early, add short breaks between long blocks, no overlaps, stay within start/end times.',
         messages:[{role:'user',content:'Day: '+state.startTime+' to '+state.endTime+'\nTasks:\n'+state.tasks+(state.prefs?'\nPreferences: '+state.prefs:'')}]
       })
