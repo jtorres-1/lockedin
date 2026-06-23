@@ -240,7 +240,7 @@ async function doAuth(mode){
     if(d.subscribed){localStorage.setItem('li_pro','1');}
     document.getElementById('auth-modal').remove();
     render();
-    showToast(isPro()?'Pro access saved':'Account created');
+    showToast(mode==='login'?'Welcome back':'Account created');
   }catch(e){
     err.textContent=e.message;err.style.display='block';
     btn.textContent=mode==='register'?'Create Account':'Log In';btn.disabled=false;
@@ -328,7 +328,7 @@ function renderApp(){
   }).join('');
 
   var accountBtn=token
-    ?'<button class="login-btn" onclick="doLogout()">'+(email||'Account')+' (out)</button>'
+    ?'<button class="login-btn" onclick="doLogout()">'+(email||'Account'+'</button>'
     :'<button class="login-btn" onclick="showAuthModal(\'login\')">Log in</button>';
 
   var header='<div class="header"><div style="display:flex;align-items:center;gap:8px;"><div class="logo">locked<span>In</span></div>'
