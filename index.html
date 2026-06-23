@@ -25,7 +25,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM San
 .header-right{display:flex;gap:8px;align-items:center;}
 .upgrade-btn{background:var(--accent);border:none;border-radius:99px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--bg);cursor:pointer;font-family:'DM Sans',sans-serif;}
 .upgrade-btn:hover{background:#b8e050;}
-.login-btn{background:transparent;border:1px solid var(--border);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:500;color:var(--sub);cursor:pointer;font-family:'DM Sans',sans-serif;}
+.login-btn{background:transparent;border:1px solid var(--border);border-radius:99px;padding:5px 14px;font-size:12px;font-weight:500;color:var(--sub);cursor:pointer;font-family:'DM Sans',sans-serif;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .login-btn:hover{border-color:var(--accent);color:var(--accent);}
 .usage-bar{width:100%;max-width:560px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
 .usage-text{font-size:12px;color:var(--sub);}
@@ -164,6 +164,7 @@ var state={view:'app',usageCount:getUsage(),schedule:[],selectedDate:new Date(),
 
 function isPro(){return localStorage.getItem('li_pro')==='1';}
 function getToken(){return localStorage.getItem('li_token');}
+function getEmail(){return localStorage.getItem('li_email');}
 function fmtDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function getNext7Days(){var r=[];for(var i=0;i<7;i++){var d=new Date();d.setDate(d.getDate()+i);r.push(d);}return r;}
 function getUsage(){try{var s=localStorage.getItem('li_usage');if(!s)return 0;var p=JSON.parse(s);return p.date===fmtDate(new Date())?p.count:0;}catch(e){return 0;}}
@@ -173,6 +174,15 @@ function openPaywall(){document.getElementById('paywall').classList.add('active'
 function closePaywall(){document.getElementById('paywall').classList.remove('active');}
 function selectDate(i){state.selectedDate=getNext7Days()[i];render();}
 function resetApp(){state.step='input';state.schedule=[];render();}
+
+function doLogout(){
+  if(!confirm('Log out?'))return;
+  localStorage.removeItem('li_token');
+  localStorage.removeItem('li_pro');
+  localStorage.removeItem('li_email');
+  state.usageCount=getUsage();
+  render();
+}
 
 function getBtnLabel(){
   if(isPro())return 'Generate schedule ->';
@@ -226,6 +236,7 @@ async function doAuth(mode){
     var d=await r.json();
     if(d.error)throw new Error(d.error);
     localStorage.setItem('li_token',d.token);
+    localStorage.setItem('li_email',email);
     if(d.subscribed){localStorage.setItem('li_pro','1');}
     document.getElementById('auth-modal').remove();
     render();
@@ -301,6 +312,8 @@ function renderApp(){
   var days=getNext7Days();
   var remaining=Math.max(0,FREE_LIMIT-state.usageCount);
   var pro=isPro();
+  var token=getToken();
+  var email=getEmail();
 
   var chips=days.map(function(d,i){
     var sel=fmtDate(d)===fmtDate(state.selectedDate);
@@ -314,11 +327,15 @@ function renderApp(){
     return '<div class="event-card"><div class="event-left"><div class="event-dot" style="background:'+dc+'"></div><div class="event-line"></div></div><div class="event-right"><div class="event-time">'+item.time+'</div><div class="event-title">'+item.title+'</div>'+(item.note?'<div class="event-note">'+item.note+'</div>':'')+'<span class="tag tag-'+item.category+'">'+item.category+'</span></div></div>';
   }).join('');
 
+  var accountBtn=token
+    ?'<button class="login-btn" onclick="doLogout()">'+(email||'Account')+' (out)</button>'
+    :'<button class="login-btn" onclick="showAuthModal(\'login\')">Log in</button>';
+
   var header='<div class="header"><div style="display:flex;align-items:center;gap:8px;"><div class="logo">locked<span>In</span></div>'
     +(pro?'<div class="pill pro">PRO</div>':'<div class="pill">AI SCHEDULER</div>')
     +'</div><div class="header-right">'
     +(pro?'':'<button class="upgrade-btn" onclick="openPaywall()">Upgrade</button>')
-    +'<button class="login-btn" onclick="showAuthModal(\''+(getToken()?'login':'login')+'\')">'+( getToken()?'Account':'Log in')+'</button>'
+    +accountBtn
     +'</div></div>';
 
   var usageBar=pro?'':'<div class="usage-bar"><span class="usage-text">'+(remaining>0?'1 free schedule to try':'Daily limit reached - upgrade for unlimited')+'</span><div class="usage-dots"><div class="dot '+(state.usageCount>0?'used':'')+'"></div></div></div>';
